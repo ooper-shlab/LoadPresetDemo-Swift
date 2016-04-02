@@ -288,7 +288,7 @@ class MainViewController: UIViewController {
         // Specify that this object is the delegate of the audio session, so that
         //    this object's endInterruption method will be invoked when needed.
         NSNotificationCenter.defaultCenter().addObserver(self,
-            selector: "handleInterruption:",
+            selector: #selector(MainViewController.handleInterruption(_:)),
             name: AVAudioSessionInterruptionNotification,
             object: mySession)
         
@@ -500,12 +500,12 @@ class MainViewController: UIViewController {
         let notificationCenter = NSNotificationCenter.defaultCenter()
         
         notificationCenter.addObserver(self,
-            selector: "handleResigningActive:",
+            selector: #selector(MainViewController.handleResigningActive(_:)),
             name: UIApplicationWillResignActiveNotification,
             object: UIApplication.sharedApplication())
         
         notificationCenter.addObserver(self,
-            selector: "handleBecomingActive:",
+            selector: #selector(MainViewController.handleBecomingActive(_:)),
             name: UIApplicationDidBecomeActiveNotification,
             object: UIApplication.sharedApplication())
         
