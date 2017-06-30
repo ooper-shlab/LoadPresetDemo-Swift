@@ -85,15 +85,16 @@ class MainViewController: UIViewController {
     
     // private class extension
     private var graphSampleRate: Float64 = 0.0
-    private var processingGraph: AUGraph = nil
-    private var samplerUnit: AudioUnit = nil
-    private var ioUnit: AudioUnit = nil
+    private var processingGraph: AUGraph? = nil
+    private var samplerUnit: AudioUnit? = nil
+    private var ioUnit: AudioUnit? = nil
     
     //MARK: -
     //MARK: Audio setup
     
     
     // Create an audio processing graph.
+    @discardableResult
     private func createAUGraph() -> Bool {
         
         var samplerNode: AUNode = 0, ioNode: AUNode = 0
@@ -114,7 +115,7 @@ class MainViewController: UIViewController {
         cd.componentSubType = kAudioUnitSubType_Sampler
         
         // Add the Sampler unit node to the graph
-        result = AUGraphAddNode(self.processingGraph, &cd, &samplerNode)
+        result = AUGraphAddNode(self.processingGraph!, &cd, &samplerNode)
         assert(result == noErr, "Unable to add the Sampler unit to the audio processing graph. Error code: \(result) '\(result.fc)'")
         
         // Specify the Output unit, to be used as the second and final node of the graph
@@ -122,23 +123,23 @@ class MainViewController: UIViewController {
         cd.componentSubType = kAudioUnitSubType_RemoteIO
         
         // Add the Output unit node to the graph
-        result = AUGraphAddNode(self.processingGraph, &cd, &ioNode)
+        result = AUGraphAddNode(self.processingGraph!, &cd, &ioNode)
         assert(result == noErr, "Unable to add the Output unit to the audio processing graph. Error code: \(result) '\(result.fc)'")
         
         // Open the graph
-        result = AUGraphOpen(self.processingGraph)
+        result = AUGraphOpen(self.processingGraph!)
         assert(result == noErr, "Unable to open the audio processing graph. Error code: \(result) '\(result.fc)'")
         
         // Connect the Sampler unit to the output unit
-        result = AUGraphConnectNodeInput(self.processingGraph, samplerNode, 0, ioNode, 0)
+        result = AUGraphConnectNodeInput(self.processingGraph!, samplerNode, 0, ioNode, 0)
         assert(result == noErr, "Unable to interconnect the nodes in the audio processing graph. Error code: \(result) '\(result.fc)'")
         
         // Obtain a reference to the Sampler unit from its node
-        result = AUGraphNodeInfo(self.processingGraph, samplerNode, nil, &samplerUnit)
+        result = AUGraphNodeInfo(self.processingGraph!, samplerNode, nil, &samplerUnit)
         assert(result == noErr, "Unable to obtain a reference to the Sampler unit. Error code: \(result) '\(result.fc)'")
         
         // Obtain a reference to the I/O unit from its node
-        result = AUGraphNodeInfo(self.processingGraph, ioNode, nil, &ioUnit)
+        result = AUGraphNodeInfo(self.processingGraph!, ioNode, nil, &ioUnit)
         assert(result == noErr, "Unable to obtain a reference to the I/O unit. Error code: \(result) '\(result.fc)'")
         
         return true
@@ -147,18 +148,18 @@ class MainViewController: UIViewController {
     
     // Starting with instantiated audio processing graph, configure its
     // audio units, initialize it, and start it.
-    private func configureAndStartAudioProcessingGraph(graph: AUGraph) {
+    private func configureAndStartAudioProcessingGraph(_ graph: AUGraph?) {
         
         var framesPerSlice: UInt32 = 0
-        var framesPerSlicePropertySize = UInt32(sizeofValue(framesPerSlice))
-        let sampleRatePropertySize = UInt32(sizeofValue(self.graphSampleRate))
+        var framesPerSlicePropertySize = UInt32(MemoryLayout.size(ofValue: framesPerSlice))
+        let sampleRatePropertySize = UInt32(MemoryLayout.size(ofValue: self.graphSampleRate))
         
-        var result = AudioUnitInitialize(self.ioUnit)
+        var result = AudioUnitInitialize(self.ioUnit!)
         assert(result == noErr, "Unable to initialize the I/O unit. Error code: \(result) '\(result.fc)'")
         
         // Set the I/O unit's output sample rate.
         result =    AudioUnitSetProperty(
-            self.ioUnit,
+            self.ioUnit!,
             kAudioUnitProperty_SampleRate,
             kAudioUnitScope_Output,
             0,
@@ -170,7 +171,7 @@ class MainViewController: UIViewController {
         
         // Obtain the value of the maximum-frames-per-slice from the I/O unit.
         result =    AudioUnitGetProperty(
-            self.ioUnit,
+            self.ioUnit!,
             kAudioUnitProperty_MaximumFramesPerSlice,
             kAudioUnitScope_Global,
             0,
@@ -182,7 +183,7 @@ class MainViewController: UIViewController {
         
         // Set the Sampler unit's output sample rate.
         result =    AudioUnitSetProperty(
-            self.samplerUnit,
+            self.samplerUnit!,
             kAudioUnitProperty_SampleRate,
             kAudioUnitScope_Output,
             0,
@@ -194,7 +195,7 @@ class MainViewController: UIViewController {
         
         // Set the Sampler unit's maximum frames-per-slice.
         result =    AudioUnitSetProperty(
-            self.samplerUnit,
+            self.samplerUnit!,
             kAudioUnitProperty_MaximumFramesPerSlice,
             kAudioUnitScope_Global,
             0,
@@ -208,15 +209,15 @@ class MainViewController: UIViewController {
         if graph != nil {
             
             // Initialize the audio processing graph.
-            result = AUGraphInitialize(graph)
+            result = AUGraphInitialize(graph!)
             assert(result == noErr, "Unable to initialze AUGraph object. Error code: \(result) '\(result.fc)'")
             
             // Start the graph
-            result = AUGraphStart(graph)
+            result = AUGraphStart(graph!)
             assert(result == noErr, "Unable to start audio processing graph. Error code: \(result) '\(result.fc)'")
             
             // Print out the graph to the console
-            CAShow(UnsafeMutablePointer<Void>(graph))
+            CAShow(UnsafeMutableRawPointer(graph)!)
         }
     }
     
@@ -224,7 +225,7 @@ class MainViewController: UIViewController {
     // Load the Trombone preset
     @IBAction func loadPresetOne(_: AnyObject) {
         
-        guard let presetURL = NSBundle.mainBundle().URLForResource("Trombone", withExtension: "aupreset") else {
+        guard let presetURL = Bundle.main.url(forResource: "Trombone", withExtension: "aupreset") else {
             NSLog("COULD NOT GET PRESET PATH!")
             return
         }
@@ -237,7 +238,7 @@ class MainViewController: UIViewController {
     // Load the Vibraphone preset
     @IBAction func loadPresetTwo(_: AnyObject) {
         
-        guard let presetURL = NSBundle.mainBundle().URLForResource("Vibraphone", withExtension: "aupreset") else {
+        guard let presetURL = Bundle.main.url(forResource: "Vibraphone", withExtension: "aupreset") else {
             NSLog("COULD NOT GET PRESET PATH!")
             return
         }
@@ -248,30 +249,31 @@ class MainViewController: UIViewController {
     }
     
     // Load a synthesizer preset file and apply it to the Sampler unit
-    private func loadSynthFromPresetURL(presetURL: NSURL) -> OSStatus {
+    @discardableResult
+    private func loadSynthFromPresetURL(_ presetURL: URL) -> OSStatus {
         
         var result = noErr
         
         // Read from the URL and convert into a CFData chunk
-        guard let propertyResourceData = NSData(contentsOfURL: presetURL) else {
+        guard let propertyResourceData = try? Data(contentsOf: presetURL) else {
             
             fatalError("Unable to create data and properties from a preset.")
         }
         
         // Convert the data object into a property list
-        var dataFormat: NSPropertyListFormat = NSPropertyListFormat.XMLFormat_v1_0
+        var dataFormat: PropertyListSerialization.PropertyListFormat = PropertyListSerialization.PropertyListFormat.xml
         do {
-            var presetPropertyList = try NSPropertyListSerialization.propertyListWithData(propertyResourceData, options: [.Immutable], format: &dataFormat)
+            var presetPropertyList = try PropertyListSerialization.propertyList(from: propertyResourceData, options: PropertyListSerialization.MutabilityOptions(), format: &dataFormat)
             
             // Set the class info property for the Sampler unit using the property list as the value.
             
             result = AudioUnitSetProperty(
-                self.samplerUnit,
+                self.samplerUnit!,
                 kAudioUnitProperty_ClassInfo,
                 kAudioUnitScope_Global,
                 0,
                 &presetPropertyList,
-                UInt32(sizeof(CFPropertyListRef))
+                UInt32(MemoryLayout<CFPropertyList>.size)
             )
             
         } catch _ as NSError {}
@@ -287,9 +289,9 @@ class MainViewController: UIViewController {
         
         // Specify that this object is the delegate of the audio session, so that
         //    this object's endInterruption method will be invoked when needed.
-        NSNotificationCenter.defaultCenter().addObserver(self,
+        NotificationCenter.default.addObserver(self,
             selector: #selector(MainViewController.handleInterruption(_:)),
-            name: AVAudioSessionInterruptionNotification,
+            name: NSNotification.Name.AVAudioSessionInterruption,
             object: mySession)
         
         // Assign the Playback category to the audio session. This category supports
@@ -335,7 +337,7 @@ class MainViewController: UIViewController {
         let onVelocity: UInt32 = 127
         let noteCommand = 	kMIDIMessage_NoteOn << 4 | 0
         
-        let result = MusicDeviceMIDIEvent(self.samplerUnit, UInt32(noteCommand), noteNum, onVelocity, 0)
+        let result = MusicDeviceMIDIEvent(self.samplerUnit!, UInt32(noteCommand), noteNum, onVelocity, 0)
         if result != noErr {
             
             NSLog("Unable to start playing the low note. Error code: \(result) '\(result.fc)'")
@@ -348,7 +350,7 @@ class MainViewController: UIViewController {
         let noteNum = kLowNote
         let noteCommand = 	kMIDIMessage_NoteOff << 4 | 0
         
-        let result = MusicDeviceMIDIEvent (self.samplerUnit, noteCommand, noteNum, 0, 0)
+        let result = MusicDeviceMIDIEvent (self.samplerUnit!, noteCommand, noteNum, 0, 0)
         if result != noErr {
             
             NSLog("Unable to stop playing the low note. Error code: \(result) '\(result.fc)'")
@@ -362,7 +364,7 @@ class MainViewController: UIViewController {
         let onVelocity: UInt32 = 127
         let noteCommand = 	kMIDIMessage_NoteOn << 4 | 0
         
-        let result = MusicDeviceMIDIEvent(self.samplerUnit, noteCommand, noteNum, onVelocity, 0)
+        let result = MusicDeviceMIDIEvent(self.samplerUnit!, noteCommand, noteNum, onVelocity, 0)
         if result != noErr {
             
             NSLog("Unable to start playing the mid note. Error code: \(result) '\(result.fc)'")
@@ -375,7 +377,7 @@ class MainViewController: UIViewController {
         let noteNum = kMidNote
         let noteCommand = 	kMIDIMessage_NoteOff << 4 | 0
         
-        let result = MusicDeviceMIDIEvent(self.samplerUnit, noteCommand, noteNum, 0, 0)
+        let result = MusicDeviceMIDIEvent(self.samplerUnit!, noteCommand, noteNum, 0, 0)
         if result != noErr {
             
             NSLog("Unable to stop playing the mid note. Error code: \(result) '\(result.fc)'")
@@ -389,7 +391,7 @@ class MainViewController: UIViewController {
         let onVelocity: UInt32 = 127
         let noteCommand = 	kMIDIMessage_NoteOn << 4 | 0
         
-        let result = MusicDeviceMIDIEvent(self.samplerUnit, noteCommand, noteNum, onVelocity, 0)
+        let result = MusicDeviceMIDIEvent(self.samplerUnit!, noteCommand, noteNum, onVelocity, 0)
         if result != noErr {
             
             NSLog("Unable to start playing the high note. Error code: \(result) '\(result.fc)'")
@@ -402,7 +404,7 @@ class MainViewController: UIViewController {
         let  noteNum = kHighNote
         let noteCommand = 	kMIDIMessage_NoteOff << 4 | 0
         
-        let result = MusicDeviceMIDIEvent(self.samplerUnit, noteCommand, noteNum, 0, 0)
+        let result = MusicDeviceMIDIEvent(self.samplerUnit!, noteCommand, noteNum, 0, 0)
         if result != noErr {
             
             NSLog("Unable to stop playing the high note. Error code: \(result) '\(result.fc)'")
@@ -414,7 +416,7 @@ class MainViewController: UIViewController {
         
         var result = noErr
         if self.processingGraph != nil {
-            result = AUGraphStop(self.processingGraph)
+            result = AUGraphStop(self.processingGraph!)
         }
         assert(result == noErr, "Unable to stop the audio processing graph. Error code: \(result) '\(result.fc)'")
     }
@@ -424,7 +426,7 @@ class MainViewController: UIViewController {
         
         var result = noErr
         if self.processingGraph != nil {
-            result = AUGraphStart(self.processingGraph)
+            result = AUGraphStart(self.processingGraph!)
         }
         assert(result == noErr, "Unable to restart the audio processing graph. Error code: \(result) '\(result.fc)'")
     }
@@ -433,12 +435,12 @@ class MainViewController: UIViewController {
     //MARK: -
     //MARK: Audio session delegate methods
     
-    @objc func handleInterruption(notification: NSNotification) {
-        guard notification.name == AVAudioSessionInterruptionNotification else {return}
+    @objc func handleInterruption(_ notification: Notification) {
+        guard notification.name == NSNotification.Name.AVAudioSessionInterruption else {return}
         let interruptionType = notification.userInfo![AVAudioSessionInterruptionTypeKey] as! UInt
-        if interruptionType == AVAudioSessionInterruptionType.Began.rawValue {
+        if interruptionType == AVAudioSessionInterruptionType.began.rawValue {
             self.beginInterruption()
-        } else if interruptionType == AVAudioSessionInterruptionType.Ended.rawValue {
+        } else if interruptionType == AVAudioSessionInterruptionType.ended.rawValue {
             if let optionsInt = notification.userInfo![AVAudioSessionInterruptionOptionKey] as? UInt {
                 let options = AVAudioSessionInterruptionOptions(rawValue: optionsInt)
                 self.endInterruptionWithOptions(options)
@@ -461,7 +463,7 @@ class MainViewController: UIViewController {
     
     
     // Respond to the ending of an audio interruption.
-    private func endInterruptionWithOptions(options: AVAudioSessionInterruptionOptions) {
+    private func endInterruptionWithOptions(_ options: AVAudioSessionInterruptionOptions) {
         
         do {
             try AVAudioSession.sharedInstance().setActive(true)
@@ -471,7 +473,7 @@ class MainViewController: UIViewController {
             return
         }
         
-        if options.contains(.ShouldResume) {
+        if options.contains(.shouldResume) {
             
             /*
             In a shipping application, check here to see if the hardware sample rate changed from
@@ -497,22 +499,22 @@ class MainViewController: UIViewController {
     //    graph as appropriate.
     private func registerForUIApplicationNotifications() {
         
-        let notificationCenter = NSNotificationCenter.defaultCenter()
+        let notificationCenter = NotificationCenter.default
         
         notificationCenter.addObserver(self,
             selector: #selector(MainViewController.handleResigningActive(_:)),
-            name: UIApplicationWillResignActiveNotification,
-            object: UIApplication.sharedApplication())
+            name: NSNotification.Name.UIApplicationWillResignActive,
+            object: UIApplication.shared)
         
         notificationCenter.addObserver(self,
             selector: #selector(MainViewController.handleBecomingActive(_:)),
-            name: UIApplicationDidBecomeActiveNotification,
-            object: UIApplication.sharedApplication())
+            name: NSNotification.Name.UIApplicationDidBecomeActive,
+            object: UIApplication.shared)
         
     }
     
     
-    @objc func handleResigningActive(_: NSNotification) {
+    @objc func handleResigningActive(_: Notification) {
         
         self.stopPlayLowNote(self)
         self.stopPlayMidNote(self)
@@ -521,12 +523,12 @@ class MainViewController: UIViewController {
     }
     
     
-    @objc func handleBecomingActive(_: NSNotification) {
+    @objc func handleBecomingActive(_: Notification) {
         
         self.restartAudioProcessingGraph()
     }
     
-    override init(nibName nibNameOrNil: String?, bundle nibBundleOrNil: NSBundle?) {
+    override init(nibName nibNameOrNil: String?, bundle nibBundleOrNil: Bundle?) {
         
         super.init(nibName: nibNameOrNil, bundle: nibBundleOrNil)
         
@@ -570,11 +572,11 @@ class MainViewController: UIViewController {
     //    [super viewDidUnload];
     //}
     
-    override func supportedInterfaceOrientations() -> UIInterfaceOrientationMask {
-        return .Portrait
+    override var supportedInterfaceOrientations : UIInterfaceOrientationMask {
+        return .portrait
     }
-    override func preferredInterfaceOrientationForPresentation() -> UIInterfaceOrientation {
-        return .Portrait
+    override var preferredInterfaceOrientationForPresentation : UIInterfaceOrientation {
+        return .portrait
     }
     //- (BOOL) shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation {
     //
