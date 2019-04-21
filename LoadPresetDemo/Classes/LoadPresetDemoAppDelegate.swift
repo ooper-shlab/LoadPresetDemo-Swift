@@ -63,7 +63,7 @@ class LoadPresetDemoAppDelegate: NSObject, UIApplicationDelegate {
     var mainViewController: MainViewController!
     
     
-    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey: Any]?) -> Bool {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         
         let aViewController = MainViewController(nibName: "MainViewController", bundle: Bundle.main)
         

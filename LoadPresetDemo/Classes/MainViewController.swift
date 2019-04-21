@@ -276,7 +276,7 @@ class MainViewController: UIViewController {
                 UInt32(MemoryLayout<CFPropertyList>.size)
             )
             
-        } catch _ as NSError {}
+        } catch {}
         
         return result
     }
@@ -291,14 +291,18 @@ class MainViewController: UIViewController {
         //    this object's endInterruption method will be invoked when needed.
         NotificationCenter.default.addObserver(self,
             selector: #selector(MainViewController.handleInterruption(_:)),
-            name: NSNotification.Name.AVAudioSessionInterruption,
+            name: AVAudioSession.interruptionNotification,
             object: mySession)
         
         // Assign the Playback category to the audio session. This category supports
         //    audio output with the Ring/Silent switch in the Silent position.
         do {
-            try mySession.setCategory(AVAudioSessionCategoryPlayback)
-        } catch let audioSessionError as NSError {
+            if #available(iOS 10.0, *) {
+                try mySession.setCategory(.playback, mode: .default)
+            } else {
+                try mySession.setCategory(.playback)
+            }
+        } catch let audioSessionError {
             NSLog("Error setting audio session category. Error: \(audioSessionError)")
             return false
         }
@@ -308,7 +312,7 @@ class MainViewController: UIViewController {
         
         do {
             try mySession.setPreferredSampleRate(self.graphSampleRate)
-        } catch let audioSessionError as NSError {
+        } catch let audioSessionError {
             NSLog("Error setting preferred hardware sample rate. Error: \(audioSessionError)")
             return false
         }
@@ -316,7 +320,7 @@ class MainViewController: UIViewController {
         // Activate the audio session
         do {
             try mySession.setActive(true)
-        } catch let audioSessionError as NSError {
+        } catch let audioSessionError {
             NSLog("Error activating the audio session. Error: \(audioSessionError)")
             return false
         }
@@ -436,13 +440,13 @@ class MainViewController: UIViewController {
     //MARK: Audio session delegate methods
     
     @objc func handleInterruption(_ notification: Notification) {
-        guard notification.name == NSNotification.Name.AVAudioSessionInterruption else {return}
+        guard notification.name == AVAudioSession.interruptionNotification else {return}
         let interruptionType = notification.userInfo![AVAudioSessionInterruptionTypeKey] as! UInt
-        if interruptionType == AVAudioSessionInterruptionType.began.rawValue {
+        if interruptionType == AVAudioSession.InterruptionType.began.rawValue {
             self.beginInterruption()
-        } else if interruptionType == AVAudioSessionInterruptionType.ended.rawValue {
+        } else if interruptionType == AVAudioSession.InterruptionType.ended.rawValue {
             if let optionsInt = notification.userInfo![AVAudioSessionInterruptionOptionKey] as? UInt {
-                let options = AVAudioSessionInterruptionOptions(rawValue: optionsInt)
+                let options = AVAudioSession.InterruptionOptions(rawValue: optionsInt)
                 self.endInterruptionWithOptions(options)
             }
         }
@@ -463,11 +467,11 @@ class MainViewController: UIViewController {
     
     
     // Respond to the ending of an audio interruption.
-    private func endInterruptionWithOptions(_ options: AVAudioSessionInterruptionOptions) {
+    private func endInterruptionWithOptions(_ options: AVAudioSession.InterruptionOptions) {
         
         do {
             try AVAudioSession.sharedInstance().setActive(true)
-        } catch let endInterruptionError as NSError {
+        } catch let endInterruptionError {
             
             NSLog("Unable to reactivate the audio session. Error: \(endInterruptionError)")
             return
@@ -503,12 +507,12 @@ class MainViewController: UIViewController {
         
         notificationCenter.addObserver(self,
             selector: #selector(MainViewController.handleResigningActive(_:)),
-            name: NSNotification.Name.UIApplicationWillResignActive,
+            name: UIApplication.willResignActiveNotification,
             object: UIApplication.shared)
         
         notificationCenter.addObserver(self,
             selector: #selector(MainViewController.handleBecomingActive(_:)),
-            name: NSNotification.Name.UIApplicationDidBecomeActive,
+            name: UIApplication.didBecomeActiveNotification,
             object: UIApplication.shared)
         
     }

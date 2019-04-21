@@ -3,11 +3,11 @@
 //  OOPUtils
 //
 //  Created by OOPer in cooperation with shlab.jp, on 2014/12/14.
-//  Last update on 2017/07/01.
+//  Last update on 2019/04/21.
 //
 //
 /*
-Copyright (c) 2015, OOPer(NAGATA, Atsuyuki)
+Copyright (c) 2015-2019, OOPer(NAGATA, Atsuyuki)
 All rights reserved.
 
 Use of any parts(functions, classes or any other program language components)
@@ -60,24 +60,24 @@ extension FourCharCode {
     
     public var fourCharString: String {
         let bytes: [UInt8] = [
-            UInt8(truncatingBitPattern: (self >> 24)),
-            UInt8(truncatingBitPattern: (self >> 16)),
-            UInt8(truncatingBitPattern: (self >> 8)),
-            UInt8(truncatingBitPattern: self),
+            UInt8(truncatingIfNeeded: (self >> 24)),
+            UInt8(truncatingIfNeeded: (self >> 16)),
+            UInt8(truncatingIfNeeded: (self >> 8)),
+            UInt8(truncatingIfNeeded: self),
         ]
         return String(bytes: bytes, encoding: .isoLatin1)!
     }
     
     public var possibleFourCharString: String {
         var bytes: [UInt8] = [
-            UInt8(truncatingBitPattern: (self >> 24)),
-            UInt8(truncatingBitPattern: (self >> 16)),
-            UInt8(truncatingBitPattern: (self >> 8)),
-            UInt8(truncatingBitPattern: self),
+            UInt8(truncatingIfNeeded: (self >> 24)),
+            UInt8(truncatingIfNeeded: (self >> 16)),
+            UInt8(truncatingIfNeeded: (self >> 8)),
+            UInt8(truncatingIfNeeded: self),
         ]
         for i in 0..<4 {
             if bytes[i] < 0x20 || bytes[i] > 0x7E {
-                bytes[i] = UInt8(("?" as UnicodeScalar).value)
+                bytes[i] = UInt8(ascii: "?")
             }
         }
         return String(bytes: bytes, encoding: .isoLatin1)!
